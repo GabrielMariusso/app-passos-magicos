@@ -11,7 +11,7 @@ import plotly.graph_objects as go
 # ==========================================
 # 1. CONFIGURACAO DA PAGINA E VARIAVEIS DE SESSAO
 # ==========================================
-st.set_page_config(page_title="Gestão Passos Magicos", layout="wide")
+st.set_page_config(page_title="Gestão Passos Mágicos", layout="wide")
 
 if 'tela_interna_crud' not in st.session_state:
     st.session_state.tela_interna_crud = 'lista'
@@ -37,28 +37,54 @@ modelo, colunas_treino = carregar_modelo()
 
 @st.cache_data(ttl=60)
 def carregar_dados_cache():
-    cliente = conectar_banco_direto()
-    if cliente:
-        link = 'https://docs.google.com/spreadsheets/d/1FbQMIWePwB8dVA0syEVEroF45A_s1tJp9r2Zo9f8nXE/edit?pli=1&gid=0#gid=0'
+    aba = obter_aba_planilha()
+    if aba:
         try:
-            return pd.DataFrame(cliente.open_by_url(link).sheet1.get_all_records())
-        except:
+            return pd.DataFrame(aba.get_all_records())
+        except Exception as e:
+            st.error(f"Erro ao ler registros: {e}")
             return pd.DataFrame()
     return pd.DataFrame()
 
 def conectar_banco_direto():
+    escopo = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
+    
+    # 1. PRIORIDADE LOCAL (VS CODE): Se o arquivo existe, usa ele direto. 
+    # Isso evita que o Streamlit procure segredos que não existem no seu PC.
     nome_arquivo = 'credenciais.json'
-    if not os.path.exists(nome_arquivo): return None
+    if os.path.exists(nome_arquivo):
+        try:
+            credenciais = ServiceAccountCredentials.from_json_keyfile_name(nome_arquivo, escopo)
+            return gspread.authorize(credenciais)
+        except Exception as e:
+            st.error(f"Erro no arquivo local: {e}")
+
+    # 2. SE NÃO TEM ARQUIVO, TENTA O SECRETS (NUVEM/STREAMLIT CLOUD)
+    # Usamos um try/except aqui para silenciar o erro de "No secrets found" no seu PC
     try:
-        escopo = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-        credenciais = ServiceAccountCredentials.from_json_keyfile_name(nome_arquivo, escopo)
-        return gspread.authorize(credenciais)
-    except: return None
+        if "gcp_service_account" in st.secrets:
+            credenciais_dict = {k: v for k, v in st.secrets["gcp_service_account"].items()}
+            credenciais_dict["private_key"] = credenciais_dict["private_key"].replace("\\n", "\n")
+            credenciais = ServiceAccountCredentials.from_json_keyfile_dict(credenciais_dict, escopo)
+            return gspread.authorize(credenciais)
+    except:
+        # Se não achou segredos e não tem arquivo, ele fica quietinho e retorna None
+        return None
+    
+    return None
 
 def obter_aba_planilha():
     cliente = conectar_banco_direto()
-    link = 'https://docs.google.com/spreadsheets/d/1FbQMIWePwB8dVA0syEVEroF45A_s1tJp9r2Zo9f8nXE/edit?pli=1&gid=0#gid=0'
-    return cliente.open_by_url(link).sheet1
+    if cliente is None:
+        st.error("Falha na autenticação com o Google. Verifique os Secrets ou o arquivo JSON.")
+        return None
+    try:
+        # URL limpa para evitar erros de navegação do gspread
+        link = 'https://docs.google.com/spreadsheets/d/1FbQMIWePwB8dVA0syEVEroF45A_s1tJp9r2Zo9f8nXE/edit'
+        return cliente.open_by_url(link).sheet1
+    except Exception as e:
+        st.error(f"Erro ao abrir a planilha. Verifique se ela foi compartilhada com o e-mail do robô: {e}")
+        return None
 
 # ==========================================
 # 3. FUNCOES DE APOIO
@@ -113,8 +139,8 @@ def calcular_risco_ia(ra, genero, fase_num, ian, ida, ieg, iaa, ips, ipp, ipv):
 # ==========================================
 # 4. LOGICA DE NAVEGACAO
 # ==========================================
-st.sidebar.title("Menu Principal")
-menu = st.sidebar.radio("Selecione uma opção:", ["🔍 Análise Exploratória", "👤 Gestão de Alunos - Previsão de Risco", "📊 Dashboard de Resultados"])
+st.sidebar.title("📌 Menu Principal")
+menu = st.sidebar.radio("Selecione uma seção:", ["🔍 Análise Exploratória", "👤 Gestão de Alunos - Previsão de Risco", "📊 Dashboard de Resultados"])
 
 if menu == "🔍 Análise Exploratória":
     st.title("🔍 Análises Obtidas no Processo de Exploração dos Dados")
@@ -144,7 +170,10 @@ elif menu == "👤 Gestão de Alunos - Previsão de Risco":
                     st.session_state.aluno_selecionado = df.iloc[idx].to_dict()
                     st.session_state.index_linha_gs = idx + 2
                     st.session_state.tela_interna_crud = 'formulario'; st.session_state.resultado_ia = None; st.rerun()
-        except: st.error("Erro ao carregar lista.")
+            else:
+                st.info("Nenhum registro encontrado na planilha.")
+        except Exception as e: 
+            st.error(f"Erro ao carregar lista de alunos: {e}")
 
     elif st.session_state.tela_interna_crud == 'formulario':
         modo_edit = st.session_state.aluno_selecionado is not None
@@ -195,14 +224,19 @@ elif menu == "👤 Gestão de Alunos - Previsão de Risco":
                 res_f = st.session_state.resultado_ia
                 dados_f = [res_f['Data e Hora'], res_f['RA do Aluno'], res_f['Fase'], res_f['Gênero'], res_f['IAN'], res_f['IDA'], res_f['IEG'], res_f['IAA'], res_f['IPS'], res_f['IPP'], res_f['IPV'], res_f['Probabilidade de Queda'], res_f['Status']]
                 aba = obter_aba_planilha()
-                if modo_edit: aba.update(f"A{st.session_state.index_linha_gs}:M{st.session_state.index_linha_gs}", [dados_f])
-                else: aba.append_row(dados_f)
-                st.cache_data.clear()
-                st.session_state.tela_interna_crud = 'lista'; st.rerun()
+                if aba:
+                    if modo_edit: aba.update(f"A{st.session_state.index_linha_gs}:M{st.session_state.index_linha_gs}", [dados_f])
+                    else: aba.append_row(dados_f)
+                    st.cache_data.clear()
+                    st.session_state.tela_interna_crud = 'lista'; st.rerun()
+                else: st.error("Erro ao conectar com a planilha para salvar.")
 
         with col_b2:
             if modo_edit and st.button("Excluir Aluno", use_container_width=True):
-                obter_aba_planilha().delete_rows(st.session_state.index_linha_gs); st.cache_data.clear(); st.session_state.tela_interna_crud = 'lista'; st.rerun()
+                aba = obter_aba_planilha()
+                if aba:
+                    aba.delete_rows(st.session_state.index_linha_gs); st.cache_data.clear(); st.session_state.tela_interna_crud = 'lista'; st.rerun()
+                else: st.error("Erro ao conectar com a planilha para excluir.")
 
         with col_b3:
             if st.button("Voltar / Cancelar", use_container_width=True): st.session_state.tela_interna_crud = 'lista'; st.rerun()
@@ -240,4 +274,5 @@ elif menu == "📊 Dashboard de Resultados":
             fig_comp = px.bar(df_plot, x='Indicador', y='Nota Media', color='Status', barmode='group', title='Comparativo de Notas Medias', color_discrete_map={'ADEQUADO': COR_ADEQUADO, 'ALERTA DE RISCO': COR_RISCO}, text_auto='.1f')
             fig_comp.update_layout(yaxis_range=[0, 11], bargap=0.2)
             st.plotly_chart(fig_comp, use_container_width=True)
-    except: st.error("Erro no dashboard.")
+    except Exception as e: 
+        st.error(f"Erro ao gerar gráficos: {e}")
