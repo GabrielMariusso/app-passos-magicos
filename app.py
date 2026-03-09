@@ -202,7 +202,7 @@ elif menu == "👤 Gestão de Alunos - Previsão de Risco":
             ipp = p2.number_input("IPP", 0.0, 10.0, converter_float_seguro(aluno.get('IPP', 7.5)))
             ipv = p3.number_input("IPV", 0.0, 10.0, converter_float_seguro(aluno.get('IPV', 7.0)))
             
-            submit = st.form_submit_button("Calcular Analise IA", type="primary", use_container_width=True)
+            submit = st.form_submit_button("Fazer Previsão de Risco", type="primary", use_container_width=True)
             
             if submit:
                 if not ra: st.warning("RA obrigatorio")
@@ -260,7 +260,7 @@ elif menu == "📊 Dashboard de Resultados":
             st.divider()
             col_g1, col_g2 = st.columns(2)
             with col_g1:
-                fig_pizza = px.pie(df_dash, names='Status', title='Status IA', color='Status', color_discrete_map={'ADEQUADO': COR_ADEQUADO, 'ALERTA DE RISCO': COR_RISCO})
+                fig_pizza = px.pie(df_dash, names='Status', title='Status', color='Status', color_discrete_map={'ADEQUADO': COR_ADEQUADO, 'ALERTA DE RISCO': COR_RISCO})
                 st.plotly_chart(fig_pizza, use_container_width=True)
             with col_g2:
                 df_fase = df_dash.groupby(['Fase', 'Status']).size().reset_index(name='Qtd')
