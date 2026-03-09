@@ -1,4 +1,4 @@
-# 🎓 Sistema de Gestão e Previsão de Risco - Passos Mágicos
+# 🎓 Sistema de Apoio e Previsão de Risco - Passos Mágicos
 
 Projeto desenvolvido como parte do **Datathon**, do curso de  
 **Pós-Graduação em Data Analytics** da **FIAP (Faculdade de Informática e Administração Paulista)**.
