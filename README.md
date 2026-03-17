@@ -51,10 +51,6 @@ O modelo final foi salvo utilizando **Joblib** e é consumido em tempo real pela
 
 ## 🧩 Funcionalidades da Aplicação
 
-### 🔍 Análise Exploratória
-- Apresentação dos insights obtidos durante a fase de descoberta de dados (EDA).
-- Gráficos e conclusões sobre o cenário histórico da associação.
-
 ### 👤 Gestão de Alunos - Previsão de Risco
 - **Lista Integrada:** Visualização de todos os alunos cadastrados com leitura direta do banco de dados (Google Sheets) via sistema de cache otimizado.
 - **Dossiê do Aluno:** Seleção de um aluno para visualizar seu perfil completo.
