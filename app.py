@@ -50,7 +50,6 @@ def conectar_banco_direto():
     escopo = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
     
     # 1. PRIORIDADE LOCAL (VS CODE): Se o arquivo existe, usa ele direto. 
-    # Isso evita que o Streamlit procure segredos que não existem no seu PC.
     nome_arquivo = 'credenciais.json'
     if os.path.exists(nome_arquivo):
         try:
@@ -60,7 +59,6 @@ def conectar_banco_direto():
             st.error(f"Erro no arquivo local: {e}")
 
     # 2. SE NÃO TEM ARQUIVO, TENTA O SECRETS (NUVEM/STREAMLIT CLOUD)
-    # Usamos um try/except aqui para silenciar o erro de "No secrets found" no seu PC
     try:
         if "gcp_service_account" in st.secrets:
             credenciais_dict = {k: v for k, v in st.secrets["gcp_service_account"].items()}
@@ -68,7 +66,6 @@ def conectar_banco_direto():
             credenciais = ServiceAccountCredentials.from_json_keyfile_dict(credenciais_dict, escopo)
             return gspread.authorize(credenciais)
     except:
-        # Se não achou segredos e não tem arquivo, ele fica quietinho e retorna None
         return None
     
     return None
@@ -79,7 +76,6 @@ def obter_aba_planilha():
         st.error("Falha na autenticação com o Google. Verifique os Secrets ou o arquivo JSON.")
         return None
     try:
-        # URL limpa para evitar erros de navegação do gspread
         link = 'https://docs.google.com/spreadsheets/d/1FbQMIWePwB8dVA0syEVEroF45A_s1tJp9r2Zo9f8nXE/edit'
         return cliente.open_by_url(link).sheet1
     except Exception as e:
@@ -140,19 +136,21 @@ def calcular_risco_ia(ra, genero, fase_num, ian, ida, ieg, iaa, ips, ipp, ipv):
 # 4. LOGICA DE NAVEGACAO
 # ==========================================
 st.sidebar.title("📌 Menu Principal")
-menu = st.sidebar.radio("Selecione uma seção:", ["🔍 Análise Exploratória", "👤 Gestão de Alunos - Previsão de Risco", "📊 Dashboard de Resultados"])
+# Nomes de menu atualizados para melhor UX
+menu = st.sidebar.radio("Selecione uma seção:", ["👤 Gestão de Alunos", "📊 Painel Geral"])
 
-if menu == "🔍 Análise Exploratória":
-    st.title("🔍 Análises Obtidas no Processo de Exploração dos Dados")
-    st.divider()
-
-elif menu == "👤 Gestão de Alunos - Previsão de Risco":
-    st.title("👤 Gestão de Alunos e Previsão de Risco")
+if menu == "👤 Gestão de Alunos":
+    st.title("👤 Gestão de Alunos")
+    # Nova descrição de UX adicionada
+    st.markdown("*Acompanhe os indicadores da turma, identifique precocemente os alertas de risco e cadastre novas avaliações para manter o histórico atualizado.*")
     st.divider()
     
     if st.session_state.tela_interna_crud == 'lista':
         if st.button("Cadastrar e Analisar Novo Aluno", type="primary"):
-            st.session_state.tela_interna_crud = 'formulario'; st.session_state.aluno_selecionado = None; st.session_state.resultado_ia = None; st.rerun()
+            st.session_state.tela_interna_crud = 'formulario'
+            st.session_state.aluno_selecionado = None
+            st.session_state.resultado_ia = None
+            st.rerun()
 
         try:
             df = carregar_dados_cache()
@@ -169,7 +167,9 @@ elif menu == "👤 Gestão de Alunos - Previsão de Risco":
                     idx = selecao.selection.rows[0]
                     st.session_state.aluno_selecionado = df.iloc[idx].to_dict()
                     st.session_state.index_linha_gs = idx + 2
-                    st.session_state.tela_interna_crud = 'formulario'; st.session_state.resultado_ia = None; st.rerun()
+                    st.session_state.tela_interna_crud = 'formulario'
+                    st.session_state.resultado_ia = None
+                    st.rerun()
             else:
                 st.info("Nenhum registro encontrado na planilha.")
         except Exception as e: 
@@ -228,21 +228,29 @@ elif menu == "👤 Gestão de Alunos - Previsão de Risco":
                     if modo_edit: aba.update(f"A{st.session_state.index_linha_gs}:M{st.session_state.index_linha_gs}", [dados_f])
                     else: aba.append_row(dados_f)
                     st.cache_data.clear()
-                    st.session_state.tela_interna_crud = 'lista'; st.rerun()
+                    st.session_state.tela_interna_crud = 'lista'
+                    st.rerun()
                 else: st.error("Erro ao conectar com a planilha para salvar.")
 
         with col_b2:
             if modo_edit and st.button("Excluir Aluno", use_container_width=True):
                 aba = obter_aba_planilha()
                 if aba:
-                    aba.delete_rows(st.session_state.index_linha_gs); st.cache_data.clear(); st.session_state.tela_interna_crud = 'lista'; st.rerun()
+                    aba.delete_rows(st.session_state.index_linha_gs)
+                    st.cache_data.clear()
+                    st.session_state.tela_interna_crud = 'lista'
+                    st.rerun()
                 else: st.error("Erro ao conectar com a planilha para excluir.")
 
         with col_b3:
-            if st.button("Voltar / Cancelar", use_container_width=True): st.session_state.tela_interna_crud = 'lista'; st.rerun()
+            if st.button("Voltar / Cancelar", use_container_width=True): 
+                st.session_state.tela_interna_crud = 'lista'
+                st.rerun()
 
-elif menu == "📊 Dashboard de Resultados":
-    st.title("📊 Dashboard de Análises e Resultados")
+elif menu == "📊 Painel Geral":
+    st.title("📊 Painel Geral")
+    # Nova descrição de UX adicionada
+    st.markdown("*Visão panorâmica do cenário atual da instituição. Acompanhe a proporção de alunos em risco e identifique rapidamente quais fases escolares demandam maior atenção e recursos.*")
     st.divider()
     try:
         df_dash = carregar_dados_cache()
@@ -274,5 +282,5 @@ elif menu == "📊 Dashboard de Resultados":
             fig_comp = px.bar(df_plot, x='Indicador', y='Nota Media', color='Status', barmode='group', title='Comparativo de Notas Medias', color_discrete_map={'ADEQUADO': COR_ADEQUADO, 'ALERTA DE RISCO': COR_RISCO}, text_auto='.1f')
             fig_comp.update_layout(yaxis_range=[0, 11], bargap=0.2)
             st.plotly_chart(fig_comp, use_container_width=True)
-    except Exception as e: 
+    except Exception as e:
         st.error(f"Erro ao gerar gráficos: {e}")
