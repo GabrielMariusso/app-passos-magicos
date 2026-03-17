@@ -57,7 +57,7 @@ O modelo final foi salvo utilizando **Joblib** e é consumido em tempo real pela
 - **Motor de IA:** Formulário para input de notas e cálculo instantâneo do risco de queda.
 - **Ações CRUD:** Cadastro de novos alunos, atualização de indicadores e exclusão de registros.
 
-### 📊 Dashboard de Resultados
+### 📊 Painel Geral
 - **Métricas Globais (Cards):** Total de alunos, quantidade em risco vs adequados, e a média geral de risco da ONG.
 - **Visão por Fase:** Gráfico de barras comparando o volume de alunos adequados e em risco em cada fase escolar.
 - **Distribuição Geral:** Gráfico de pizza ilustrando o percentual da situação atual da associação.
